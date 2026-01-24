@@ -4,6 +4,7 @@ A local webapp to upload a receipt image, and extract its items using a local LL
 
 > Calculations are based in Malaysian tax which typically include Sales Service Tax (SST) and Service Charge.
 
+![banner](assets/banner.png)
 
 ## About this Project
 
