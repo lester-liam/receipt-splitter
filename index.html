@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Receipt Splitter</title>
+    <!-- React (no build step) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      :root {
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        color: #0f172a;
+        background: #f8fafc;
+      }
+      body {
+        margin: 0;
+      }
+      .page {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 8px;
+      }
+      p.lead {
+        margin: 0 0 20px;
+        color: #475569;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 18px 20px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+        margin-bottom: 16px;
+      }
+      .upload {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      button {
+        background: #0f766e;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button:disabled {
+        background: #94a3b8;
+        cursor: not-allowed;
+      }
+      input[type="text"] {
+        padding: 8px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 14px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+        padding: 10px 8px;
+        font-size: 14px;
+      }
+      th {
+        background: #f1f5f9;
+        font-weight: 600;
+      }
+      .people {
+        display: grid;
+        gap: 12px;
+      }
+      .person-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px;
+      }
+      .person-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .tags {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .tag {
+        background: #e2e8f0;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 12px;
+      }
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 12px;
+        margin-top: 10px;
+      }
+      .summary-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px;
+        background: #f8fafc;
+      }
+      .muted {
+        color: #64748b;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #e0f2f1;
+        color: #0f766e;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 13px;
+      }
+      .inline-inputs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .tax-input {
+        width: 120px;
+      }
+      .unassigned {
+        color: #dc2626;
+        font-weight: 600;
+      }
+      .tax-summary {
+        display: flex;
+        justify-content: flex-end;
+        flex: 1;
+      }
+      .item-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .btn-small {
+        padding: 4px 8px;
+        font-size: 12px;
+        background: #64748b;
+      }
+      .btn-small:hover {
+        background: #475569;
+      }
+      .btn-danger {
+        background: #dc2626;
+      }
+      .btn-danger:hover {
+        background: #b91c1c;
+      }
+      .editable-cell {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .editable-cell input {
+        flex: 1;
+        min-width: 0;
+        padding: 4px 6px;
+        font-size: 13px;
+      }
+      .editable-cell button {
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+      .edit-mode {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .info-icon {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #cbd5e1;
+        color: #475569;
+        text-align: center;
+        line-height: 16px;
+        font-size: 11px;
+        cursor: help;
+        margin-left: 4px;
+      }
+      .tooltip {
+        position: relative;
+        display: inline-block;
+      }
+      .tooltip-content {
+        visibility: hidden;
+        background-color: #1e293b;
+        color: #fff;
+        text-align: left;
+        border-radius: 6px;
+        padding: 8px 12px;
+        position: absolute;
+        z-index: 1000;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: normal;
+        width: 200px;
+        font-size: 12px;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      .tooltip:hover .tooltip-content {
+        visibility: visible;
+        opacity: 1;
+      }
+      .mobile-instructions {
+        display: none;
+      }
+      @media (max-width: 768px) {
+        .page {
+          padding: 16px 12px 24px;
+        }
+        h1 {
+          font-size: 22px;
+        }
+        .card {
+          padding: 12px 14px;
+        }
+        .inline-inputs {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .tax-summary {
+          justify-content: flex-start;
+          margin-top: 8px;
+        }
+        .pill {
+          flex-wrap: wrap;
+          font-size: 11px;
+          padding: 4px 8px;
+        }
+        table {
+          font-size: 12px;
+          display: block;
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+        th, td {
+          padding: 8px 6px;
+        }
+        .tags {
+          flex-wrap: wrap;
+        }
+        .tag {
+          font-size: 11px;
+          padding: 3px 6px;
+        }
+        .mobile-instructions {
+          display: block;
+          margin-top: 8px;
+          font-size: 12px;
+          color: #64748b;
+        }
+        .desktop-instructions {
+          display: none;
+        }
+        .summary {
+          grid-template-columns: 1fr;
+        }
+        .editable-cell {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .item-actions {
+          flex-direction: column;
+          gap: 4px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useMemo } = React;
+
+      const currency = (value) =>
+        new Intl.NumberFormat("en-MY", {
+          style: "currency",
+          currency: "MYR",
+          minimumFractionDigits: 2,
+        }).format(value);
+
+      const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+      // Call FastAPI endpoint; fallback to local mock if unavailable.
+      const callApiExtract = async (file) => {
+        const formData = new FormData();
+        formData.append("image", file, file.name || "receipt.jpg");
+
+        const res = await fetch("http://localhost:8000/extract", {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          throw new Error(`API error ${res.status}`);
+        }
+        return res.json();
+      };
+
+      // Mocked vision extraction to keep the MVP usable if the API is down.
+      const mockExtractReceipt = () =>
+        new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              items: [
+                { id: crypto.randomUUID(), name: "Nasi Lemak", price: 5.0, quantity: 1 },
+                { id: crypto.randomUUID(), name: "Teh Tarik", price: 3.0, quantity: 2 },
+                { id: crypto.randomUUID(), name: "Roti Canai", price: 4.5, quantity: 1 },
+              ],
+              sst: 6,
+              serviceCharge: 10,
+              notes:
+                "FastAPI unavailable; using local mock. Start backend at http://localhost:8000.",
+            });
+          }, 500);
+        });
+
+      const calculateSplits = (items, people, { sst = 0, serviceCharge = 0 } = {}) => {
+        // Here `sst` and `serviceCharge` are interpreted as PERCENTAGES
+        // e.g. 6 = 6% SST, 10 = 10% service charge.
+        const sstPct = Number(sst) || 0;
+        const servicePct = Number(serviceCharge) || 0;
+
+        const perPerson = people.reduce((acc, p) => {
+          acc[p.id] = { person: p, items: [], taxes: [], subtotal: 0, total: 0 };
+          return acc;
+        }, {});
+
+        const itemTotals = [];
+        items.forEach((item) => {
+          const assignees = item.assignedPeople || [];
+          if (assignees.length === 0) {
+            itemTotals.push({ item, shares: [] });
+            return;
+          }
+          const share = round2(Number(item.price || 0) / assignees.length);
+          assignees.forEach((pid) => {
+            if (!perPerson[pid]) return;
+            perPerson[pid].items.push({ item, share });
+            perPerson[pid].subtotal = round2(perPerson[pid].subtotal + share);
+          });
+          itemTotals.push({ item, shares: assignees.map((pid) => ({ pid, share })) });
+        });
+
+        const itemsTotal = Object.values(perPerson).reduce(
+          (sum, p) => sum + p.subtotal,
+          0
+        );
+
+        // Both Service Charge and SST are percentage-based on the Net Total (itemsTotal)
+        // Service charge is percentage-based on the items total
+        const serviceChargeAmount = round2((itemsTotal * servicePct) / 100);
+
+        // SST is percentage-based on the items total (Net Total)
+        const sstAmount = round2((itemsTotal * sstPct) / 100);
+
+        const totalExtras = serviceChargeAmount + sstAmount;
+
+        // Distribute service charge + SST proportionally to each person's item subtotal.
+        Object.values(perPerson).forEach((p) => {
+          const ratio = itemsTotal ? p.subtotal / itemsTotal : 1 / Math.max(people.length, 1);
+          const personSst = round2(sstAmount * ratio);
+          const personService = round2(serviceChargeAmount * ratio);
+          
+          if (personSst > 0) {
+            p.taxes.push({ label: "SST", share: personSst });
+          }
+
+          if (personService > 0) {
+            p.taxes.push({ label: "Service charge", share: personService });
+          }
+
+          p.total = round2(p.subtotal + personSst + personService);
+        });
+
+        return {
+          perPerson,
+          unassignedItems: itemTotals.filter((t) => t.shares.length === 0).map((t) => t.item),
+          itemsTotal,
+          serviceChargeAmount,
+          sstAmount,
+          extrasTotal: round2(totalExtras),
+          grandTotal: round2(itemsTotal + totalExtras),
+        };
+      };
+
+      const App = () => {
+        const [items, setItems] = useState([]);
+        const [people, setPeople] = useState([]); // Start with 0 people
+        // Percentages, e.g. 6 = 6% SST, 10 = 10% service charge.
+        const [sst, setSst] = useState(6);
+        const [serviceCharge, setServiceCharge] = useState(10);
+        const [loading, setLoading] = useState(false);
+        const [message, setMessage] = useState("Upload a receipt to start.");
+        const [newPerson, setNewPerson] = useState("");
+        const [notes, setNotes] = useState("");
+        const [editingItem, setEditingItem] = useState(null);
+        const [editForm, setEditForm] = useState({ name: "", price: "", quantity: "" });
+
+        const onUpload = async (event) => {
+          const file = event.target.files?.[0];
+          if (!file) return;
+          setLoading(true);
+          setMessage("Reading receipt...");
+          try {
+            let extracted;
+            try {
+              extracted = await callApiExtract(file); // primary path: FastAPI
+            } catch (apiErr) {
+              console.warn("API failed, falling back to mock", apiErr);
+              extracted = await mockExtractReceipt(); // fallback
+            }
+            const initialItems = (extracted.items || []).map((item) => ({
+              ...item,
+              assignedPeople: [],
+            }));
+            setItems(initialItems);
+            setSst(extracted.sst ?? 0);
+            setServiceCharge(extracted.serviceCharge ?? 0);
+            setNotes(extracted.notes || "");
+            setMessage("Receipt processed. Assign items below.");
+          } catch (err) {
+            console.error(err);
+            setMessage("Failed to process receipt.");
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        const toggleAssignment = (personId, itemId) => {
+          setItems((prev) =>
+            prev.map((item) => {
+              if (item.id !== itemId) return item;
+              const assigned = item.assignedPeople || [];
+              const exists = assigned.includes(personId);
+              return {
+                ...item,
+                assignedPeople: exists
+                  ? assigned.filter((id) => id !== personId)
+                  : [...assigned, personId],
+              };
+            })
+          );
+        };
+
+        const addPerson = () => {
+          const name = newPerson.trim();
+          if (!name) return;
+          setPeople((prev) => [...prev, { id: crypto.randomUUID(), name }]);
+          setNewPerson("");
+        };
+
+        const removePerson = (personId) => {
+          setPeople((prev) => prev.filter((p) => p.id !== personId));
+          setItems((prev) =>
+            prev.map((item) => ({
+              ...item,
+              assignedPeople: (item.assignedPeople || []).filter((id) => id !== personId),
+            }))
+          );
+        };
+
+        const addItem = () => {
+          const newItem = {
+            id: crypto.randomUUID(),
+            name: "New Item",
+            price: 0,
+            quantity: 1,
+            assignedPeople: [],
+          };
+          setItems((prev) => [...prev, newItem]);
+          setEditingItem(newItem.id);
+          setEditForm({ name: newItem.name, price: String(newItem.price), quantity: String(newItem.quantity) });
+        };
+
+        const deleteItem = (itemId) => {
+          setItems((prev) => prev.filter((item) => item.id !== itemId));
+          if (editingItem === itemId) {
+            setEditingItem(null);
+            setEditForm({ name: "", price: "", quantity: "" });
+          }
+        };
+
+        const startEditItem = (item) => {
+          setEditingItem(item.id);
+          setEditForm({
+            name: item.name || "",
+            price: String(item.price || 0),
+            quantity: String(item.quantity || 1),
+          });
+        };
+
+        const cancelEditItem = () => {
+          setEditingItem(null);
+          setEditForm({ name: "", price: "", quantity: "" });
+        };
+
+        const saveEditItem = (itemId) => {
+          const name = editForm.name.trim();
+          const price = parseFloat(editForm.price);
+          const quantity = parseInt(editForm.quantity, 10);
+
+          // Validation
+          if (!name) {
+            alert("Item name cannot be empty.");
+            return;
+          }
+          if (isNaN(price) || price < 0) {
+            alert("Price must be a valid number >= 0.");
+            return;
+          }
+          if (isNaN(quantity) || quantity < 1 || !Number.isInteger(quantity)) {
+            alert("Quantity must be a valid integer >= 1.");
+            return;
+          }
+
+          setItems((prev) =>
+            prev.map((item) =>
+              item.id === itemId
+                ? { ...item, name, price: round2(price), quantity }
+                : item
+            )
+          );
+          setEditingItem(null);
+          setEditForm({ name: "", price: "", quantity: "" });
+        };
+
+        const { perPerson, unassignedItems, itemsTotal, serviceChargeAmount, sstAmount, grandTotal } = useMemo(
+          () => calculateSplits(items, people, { sst: Number(sst), serviceCharge: Number(serviceCharge) }),
+          [items, people, sst, serviceCharge]
+        );
+
+        return (
+          <div className="page">
+            <h1>Receipt Splitter</h1>
+            <p className="lead">
+              Upload a receipt, auto-extract items, assign them to people, and view a clear split.
+            </p>
+
+            <div className="card">
+              <div className="upload">
+                <label className="pill">
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg, image/jpg"
+                    style={{ display: "none" }}
+                    onChange={onUpload}
+                    disabled={loading}
+                  />
+                  {loading ? "Processing..." : "Upload Receipt"}
+                </label>
+                <div>{message}</div>
+              </div>
+              {notes && <p className="muted" style={{ marginTop: 8 }}>{notes}</p>}
+            </div>
+
+            <div className="card">
+              <div className="inline-inputs">
+                <div>
+                  <div className="muted">SST (%)</div>
+                  <input
+                    className="tax-input"
+                    type="number"
+                    step="1"
+                    value={sst}
+                    onChange={(e) => setSst(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <div className="muted">Service charge (%)</div>
+                  <input
+                    className="tax-input"
+                    type="number"
+                    step="1"
+                    value={serviceCharge}
+                    onChange={(e) => setServiceCharge(e.target.value)}
+                  />
+                </div>
+                <div className="tax-summary">
+                  <div className="pill">
+                    Items: {currency(itemsTotal || 0)} · Service: {currency(serviceChargeAmount || 0)} · SST: {currency(sstAmount || 0)} ·
+                    Total: {currency(grandTotal || 0)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                <h3 style={{ margin: 0 }}>Items</h3>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                  <div className="muted desktop-instructions">
+                    Assign items to people. Items can be shared by selecting multiple names.
+                  </div>
+                  <button onClick={addItem}>+ Add Item</button>
+                </div>
+              </div>
+              <div className="mobile-instructions">
+                Tap items to edit. Assign items to people by checking boxes.
+              </div>
+              {items.length === 0 ? (
+                <p className="muted">No items yet. Upload a receipt or add items manually.</p>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Price</th>
+                      <th>Quantity</th>
+                      <th>Assigned To</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item) => (
+                      <tr key={item.id}>
+                        <td onClick={() => !editingItem && startEditItem(item)} style={{ cursor: editingItem === item.id ? "default" : "pointer" }}>
+                          {editingItem === item.id ? (
+                            <input
+                              type="text"
+                              value={editForm.name}
+                              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                              onKeyDown={(e) => e.key === "Enter" && saveEditItem(item.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ width: "100%", padding: "4px 6px", fontSize: "13px" }}
+                              autoFocus
+                            />
+                          ) : (
+                            <span>{item.name}</span>
+                          )}
+                        </td>
+                        <td onClick={() => !editingItem && startEditItem(item)} style={{ cursor: editingItem === item.id ? "default" : "pointer" }}>
+                          {editingItem === item.id ? (
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={editForm.price}
+                              onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                              onKeyDown={(e) => e.key === "Enter" && saveEditItem(item.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ width: "100%", padding: "4px 6px", fontSize: "13px" }}
+                            />
+                          ) : (
+                            <span>{currency(Number(item.price || 0))}</span>
+                          )}
+                        </td>
+                        <td onClick={() => !editingItem && startEditItem(item)} style={{ cursor: editingItem === item.id ? "default" : "pointer" }}>
+                          {editingItem === item.id ? (
+                            <input
+                              type="number"
+                              step="1"
+                              min="1"
+                              value={editForm.quantity}
+                              onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
+                              onKeyDown={(e) => e.key === "Enter" && saveEditItem(item.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ width: "100%", padding: "4px 6px", fontSize: "13px" }}
+                            />
+                          ) : (
+                            <span>{Number(item.quantity || 1)}</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="tags">
+                            {people.length === 0 ? (
+                              <span className="muted">Add people first</span>
+                            ) : (
+                              people.map((p) => (
+                                <label key={p.id} className="tag">
+                                  <input
+                                    type="checkbox"
+                                    checked={item.assignedPeople?.includes(p.id) || false}
+                                    onChange={() => toggleAssignment(p.id, item.id)}
+                                  />{" "}
+                                  {p.name}
+                                </label>
+                              ))
+                            )}
+                          </div>
+                        </td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <div className="item-actions">
+                            {editingItem === item.id ? (
+                              <>
+                                <button className="btn-small" onClick={() => saveEditItem(item.id)}>Save</button>
+                                <button className="btn-small" onClick={cancelEditItem}>Cancel</button>
+                              </>
+                            ) : (
+                              <>
+                                <button className="btn-small" onClick={() => startEditItem(item)}>Edit</button>
+                                <button className="btn-small btn-danger" onClick={() => deleteItem(item.id)}>Delete</button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="card">
+              <div className="person-header">
+                <h3 style={{ margin: 0 }}>People</h3>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={newPerson}
+                    onChange={(e) => setNewPerson(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addPerson()}
+                  />
+                  <button style={{ marginLeft: 8 }} onClick={addPerson}>Add</button>
+                </div>
+              </div>
+              {people.length === 0 ? (
+                <p className="muted" style={{ marginTop: 12 }}>No people added yet. Add people to assign items.</p>
+              ) : (
+                <div className="people">
+                  {people.map((p) => (
+                    <div key={p.id} className="person-card">
+                      <div className="person-header">
+                        <strong>{p.name}</strong>
+                        <button onClick={() => removePerson(p.id)}>Remove</button>
+                      </div>
+                      <div className="muted" style={{ marginBottom: 6 }}>
+                        Select items this person shares
+                      </div>
+                      <div className="tags">
+                        {items.length === 0 && <span className="muted">No items yet</span>}
+                        {items.map((item) => (
+                          <label key={item.id} className="tag">
+                            <input
+                              type="checkbox"
+                              checked={item.assignedPeople?.includes(p.id) || false}
+                              onChange={() => toggleAssignment(p.id, item.id)}
+                            />{" "}
+                            {item.name}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="card">
+              <h3 style={{ marginTop: 0 }}>Results</h3>
+              {unassignedItems.length > 0 && (
+                <p className="unassigned">
+                  Unassigned items: {unassignedItems.map((i) => i.name).join(", ")} (not billed)
+                </p>
+              )}
+              {people.length === 0 ? (
+                <p className="muted">Add people and assign items to see cost breakdown.</p>
+              ) : (
+                <div className="summary">
+                  {people.map((p) => {
+                    const record = perPerson[p.id] || { items: [], taxes: [], total: 0 };
+                    return (
+                      <div key={p.id} className="summary-card">
+                        <strong>{p.name}</strong>
+                        <div className="muted" style={{ marginBottom: 8 }}>
+                          Subtotal: {currency(record.subtotal || 0)}
+                        </div>
+                        <div>
+                          {record.items.map(({ item, share }) => (
+                            <div key={item.id}>
+                              {item.name} — {currency(share)}{" "}
+                              <span className="muted">
+                                {item.assignedPeople?.length > 1 ? "(shared)" : ""}
+                              </span>
+                            </div>
+                          ))}
+                          {record.taxes.map((tax, idx) => (
+                            <div key={idx}>{tax.label}: {currency(tax.share)}</div>
+                          ))}
+                          {record.items.length === 0 && record.taxes.length === 0 && (
+                            <div className="muted">No items assigned yet.</div>
+                          )}
+                        </div>
+                        <div style={{ marginTop: 10, fontWeight: 700 }}>
+                          Total: {currency(record.total || 0)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>

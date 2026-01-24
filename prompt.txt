@@ -1,0 +1,31 @@
+Perform the Following Tasks:
+1. Extract data fields using the OCR text data extracted from an image of a receipt
+2. Format your response and return only A JSON output using the schema below
+
+Schema:
+{
+    "items": [
+        {
+            "name": string,
+            "price": number,
+            "quantity": integer
+        }
+    ],                            // Array of items with name, price and quantity
+    "sst": integer,               // Sales Service Tax (SST) percent, default 0 if not present
+    "serviceCharge": integer      // Service Charge percent, default 0 if not present
+}
+
+Return: JSON Format using schema above
+
+Rules:
+- "items" should contain only purchasable products (food/drink/merch) with a unit price.
+- "items" must include name, price and quantity (quantity default 1 if missing)
+- Exclude if the data looks like a summary/total and not a purchasable product
+- Do NOT add taxes/fees/surcharges as items. They must NOT appear in `items`.
+- "sst" or "serviceCharge" must be percentages (look specifically for the '%' symbol)
+- If "sst" or "serviceCharge" not present, return 0
+- Exclude lines such as: TAX, SST, SERVICE TAX, GST, VAT, SERVICE CHARGE, SC, ROUNDING, ROUND, SUBTOTAL, TOTAL, GRAND TOTAL, NETT, TAXABLE AMOUNT, DISCOUNT, CHANGE, CASH, CARD, QR, PAYMENT, AMOUNT DUE.
+
+
+Text Data:
+{{TEXT_DATA}}
