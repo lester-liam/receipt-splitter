@@ -1,28 +1,27 @@
 """
-FastAPI draft endpoint for receipt extraction using Ollama `gemma3:4b-it-q4_K_M`.
+FastAPI Endpoint for Receipt Extraction using Ollama/Gemini API
 
-Goal:
+Pipeline/Process:
 - Receive an image as bytes
 - Run OCR (PaddleOCR) to detect/recognize text
-- Send OCR text to Ollama (text model) for structured parsing
-- Extract:
+- Parse Recognized Text into (Ollama/Gemini) Model for Field Extraction
+- Extracts:
   - Mandatory: item name, price, quantity
   - Optional: SST %, service charge % (default 0)
-- Return JSON matching the mock extraction shape used in `index.html`:
+- Coerce Response & Returns JSON matching ExtractReceiptResponse model:
 
-{
+# Sample JSON Response
+{ 
   "items": [{"id": "...", "name": "...", "price": 0.0, "quantity": 1}, ...],
   "sst": 0,
   "serviceCharge": 0,
+  "notes": "..."
 }
-
-Notes:
-- This is intentionally "MVP draft": it includes a robust interface + placeholders.
-- Parsing receipt text into structured items is non-trivial; we ask the model to output strict JSON.
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
@@ -33,15 +32,21 @@ from uuid import uuid4
 
 import cv2
 import httpx
+import requests
 import numpy as np
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, Depends, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_throttle import RateLimiter
+from google import genai
 from paddleocr import PaddleOCR
 from pydantic import BaseModel, Field
 
 # Load Environment
 load_dotenv()
+
+# Default Environment Configurations
+LOCAL_HOST_ENABLED = os.getenv("LOCAL_HOST_ENABLED", "true")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b-it-q4_K_M")
 OLLAMA_TIMEOUT_S = float(os.getenv("OLLAMA_TIMEOUT_S", "180"))
@@ -56,7 +61,7 @@ logging.basicConfig(
     filemode="a", 
 )
 
-
+# Pydantic Models 
 class ExtractedItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
@@ -85,12 +90,14 @@ async def lifespan(app: FastAPI):
     )
     yield
 
+# --- FastAPI App & Middleware ---
+# Limit to 2 requests per minute
+limiter = RateLimiter(times=2, seconds=60)
 app = FastAPI(
-    title="Receipt Splitter MVP API",
-    version="0.1.0",
+    title="ReceiptSplitter FastAPI",
+    version="0.2.0",
     lifespan=lifespan,
 )
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -172,38 +179,22 @@ def _extract_rec_texts_from_ocr_result(result: Any) -> List[str]:
     Normalizes PaddleOCR outputs to a list of recognized text strings (rec_texts).
 
     Supports:
-    - PaddleOCR.ocr(img, ...) legacy output: list[list[ [box], (text, score) ]]
-    - PaddleOCR.predict(img) newer output objects/dicts that expose rec_texts
+    [to be updated]
     """
     rec_texts: List[str] = []
 
-    # Case 1: object(s) with attribute `rec_texts`
-    if isinstance(result, list) and result and hasattr(result[0], "rec_texts"):
-        for res in result:
-            rec_texts.extend([str(t) for t in getattr(res, "rec_texts", []) if str(t).strip()])
+    try:
+        # Case 1: API Response ocrResults: [{'prunedResults:{...}'}]
+        if isinstance(result, dict) and result:
+            return result['ocrResults'][0]['prunedResult']['rec_texts']
+        else: 
+            # Case 2: PaddleOCR Local Output
+            if isinstance(result, list):
+                return result[0].get('rec_texts', [])
+            
+        raise Exception("Unrecognized PaddleOCR result format.")
+    except Exception as e:
         return rec_texts
-
-    # Case 2: dict(s) with key `rec_texts`
-    if isinstance(result, list) and result and isinstance(result[0], dict) and "rec_texts" in result[0]:
-        for res in result:
-            rec_texts.extend([str(t) for t in (res.get("rec_texts") or []) if str(t).strip()])
-        return rec_texts
-
-    # Case 3: legacy `ocr` structure: [[ [box], (text, score) ], ...]
-    if isinstance(result, list):
-        # Sometimes it's wrapped as [page0] where page0 is list of lines
-        page = result[0] if (len(result) == 1 and isinstance(result[0], list)) else result
-        for line in page:
-            if not isinstance(line, (list, tuple)) or len(line) < 2:
-                continue
-            text_part = line[1]
-            if isinstance(text_part, (list, tuple)) and text_part:
-                text = str(text_part[0]).strip()
-                if text:
-                    rec_texts.append(text)
-        return rec_texts
-
-    return rec_texts
 
 
 def _run_paddle_ocr(image_bytes: bytes) -> Tuple[List[str], Dict[str, Any]]:
@@ -211,17 +202,43 @@ def _run_paddle_ocr(image_bytes: bytes) -> Tuple[List[str], Dict[str, Any]]:
     Runs PaddleOCR for text detection and recognition.
     Returns (rec_texts, debug_info) tuple containing recognized text lines and debug metadata.
     """
-    img = _decode_image_bytes(image_bytes)
 
-    # Prefer predict() if available (matches your test.py usage), else fallback to ocr()
-    if hasattr(app.state.ocr, "predict"):
-        result = app.state.ocr.predict(img)  # type: ignore[attr-defined]
+    if LOCAL_HOST_ENABLED.lower() == "true":
+
+        # Use Local PaddleOCR to Process Image
+        img = _decode_image_bytes(image_bytes)
+
+        # Prefer predict() if available (matches your test.py usage), else fallback to ocr()
+        if hasattr(app.state.ocr, "predict"):
+            try:
+                result = app.state.ocr.predict(img)  # type: ignore[attr-defined]
+                rec_texts = _extract_rec_texts_from_ocr_result(result)
+                return rec_texts, {"mode": "predict", "raw_type": str(type(result)), "data": result}
+            except Exception as e:
+                result = app.state.ocr.ocr(img, cls=False)  # type: ignore[attr-defined]
+                rec_texts = _extract_rec_texts_from_ocr_result(result)
+                return rec_texts, {"mode": "ocr", "raw_type": str(type(result)), "data": result}
+    else:
+        # Use PaddleOCRv5 API Service (Baidu AI Studio)
+        img = base64.b64encode(image_bytes).decode('ascii')
+
+        headers = {
+            "Authorization": f"token {os.getenv('PP_AI_STUDIO_TOKEN')}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "file": img,
+            "fileType": 1,  # For PDF Docs, set `fileType` to 0; for images, set to 1
+            "useDocOrientationClassify": False,
+            "useDocUnwarping": False,
+            "useTextlineOrientation": False,
+        }
+
+        response = requests.post(f"{os.getenv('PP_AI_STUDIO_URL')}", json=payload, headers=headers)
+        result = response.json()['result']
         rec_texts = _extract_rec_texts_from_ocr_result(result)
-        return rec_texts, {"mode": "predict", "raw_type": str(type(result))}
-
-    result = app.state.ocr.ocr(img, cls=False)  # type: ignore[attr-defined]
-    rec_texts = _extract_rec_texts_from_ocr_result(result)
-    return rec_texts, {"mode": "ocr", "raw_type": str(type(result))}
+        return rec_texts, {"mode": "api", "raw_type": str(type(result)), "data": json.dumps(result)}
 
 
 async def _infer_with_ollama_from_text(rec_texts: Sequence[str]) -> Dict[str, Any]:
@@ -322,16 +339,23 @@ def _coerce_response(model_json: Dict[str, Any]) -> ExtractReceiptResponse:
     except Exception:
         service = 0.0
 
-    return ExtractReceiptResponse(
-        items=items,
-        sst=sst,
-        serviceCharge=service,
-        notes=f"Ollama inference via {OLLAMA_BASE_URL} model={OLLAMA_MODEL}.",
-    )
+    if LOCAL_HOST_ENABLED.lower() == "true":
+        return ExtractReceiptResponse(
+            items=items,
+            sst=sst,
+            serviceCharge=service,
+            notes=f"Ollama inference via {OLLAMA_BASE_URL} model={OLLAMA_MODEL}.")
+    else:
+        return ExtractReceiptResponse(
+            items=items,
+            sst=sst,
+            serviceCharge=service,
+            notes=f"Gemini Cloud inference via API key.")
 
-
-@app.post("/extract", response_model=ExtractReceiptResponse)
-async def extract_receipt(image: UploadFile = File(...)) -> ExtractReceiptResponse:
+@app.post("/extract", response_model=ExtractReceiptResponse, dependencies=[Depends(limiter)])
+async def extract_receipt(
+    image: UploadFile = File(...)
+) -> ExtractReceiptResponse:
     """
     Receives an image upload and returns extracted receipt info.
     """
@@ -343,7 +367,7 @@ async def extract_receipt(image: UploadFile = File(...)) -> ExtractReceiptRespon
         raise HTTPException(status_code=400, detail="Empty file.")
 
     logger.info("Received /extract upload filename=%s content_type=%s size_bytes=%d", image.filename, image.content_type, len(image_bytes))
-
+    
     # 1) PaddleOCR: detect + recognize text
     try:
         rec_texts, ocr_debug = _run_paddle_ocr(image_bytes)
@@ -359,20 +383,36 @@ async def extract_receipt(image: UploadFile = File(...)) -> ExtractReceiptRespon
 
     logger.info("OCR ok: lines=%d debug=%s", len(rec_texts), ocr_debug)
     logger.debug("OCR sample: %s", rec_texts[:20])
+    
+    # 2) Ollama/Gemini Gemma3: parse OCR text to strict JSON
+    # Local / Gemini Cloud Inference
+    if LOCAL_HOST_ENABLED.lower() == "true":
+        try:
+            model_json = await _infer_with_ollama_from_text(rec_texts)
+        except httpx.HTTPError as e:
+            logger.exception("Ollama HTTP error: %s", e)
+            raise HTTPException(
+                status_code=502,
+                detail=f"Ollama call failed ({type(e).__name__}). Is Ollama running at {OLLAMA_BASE_URL}?",
+            )
+        except Exception as e:
+            logger.exception("Model inference/parsing failed: %s", e)
+            raise HTTPException(status_code=502, detail=f"Model inference/parsing failed: {e}")
 
-    # 2) Ollama Gemma3: parse OCR text to strict JSON
-    try:
-        model_json = await _infer_with_ollama_from_text(rec_texts)
-    except httpx.HTTPError as e:
-        logger.exception("Ollama HTTP error: %s", e)
-        raise HTTPException(
-            status_code=502,
-            detail=f"Ollama call failed ({type(e).__name__}). Is Ollama running at {OLLAMA_BASE_URL}?",
-        )
-    except Exception as e:
-        logger.exception("Model inference/parsing failed: %s", e)
-        raise HTTPException(status_code=502, detail=f"Model inference/parsing failed: {e}")
+    else:
+        try:
+            client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+            response = client.models.generate_content(
+                model=os.getenv("CLOUD_MODEL", "gemma-3-4b-it"),
+                contents=_build_prompt_from_rec_texts(rec_texts)
+            )
+            model_json = _first_json_object(response.text)
+            resp = print(_coerce_response(model_json))
+        except Exception as e:
+            logger.exception("Cloud model inference/parsing failed: %s", e)
+            raise HTTPException(status_code=502, detail=f"Cloud model inference/parsing failed: {e}")
+    
     resp = _coerce_response(model_json)
     logger.info("Extraction ok: items=%d sst=%s serviceCharge=%s", len(resp.items), resp.sst, resp.serviceCharge)
     return resp

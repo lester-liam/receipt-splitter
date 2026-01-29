@@ -1,8 +1,8 @@
-# ReceiptSplitter
+# Receipt Splitter
 
-A local webapp to upload a receipt image, and extract its items using a local LLM (Ollama), assign items to people, and view a clear cost breakdown per pax with taxes.
+A web applications for users upload their receipts, and detect & extract items using PaddleOCRv5+Gemma3n Model, great for splitting bills.
 
-> Calculations are based in Malaysian tax which typically include Sales Service Tax (SST) and Service Charge.
+> Calculations are based on Malaysian tax culture which typically includes Sales Service Tax (SST) and/or Service Charge.
 
 ![banner](assets/banner.png)
 
@@ -18,6 +18,17 @@ The project was vibe-coded with <b>Cursor</b> with some minor backend code writt
 
 > You can locate the starter prompt I used to generate the MVP Skeleton Code via Cursor in `cursor_prompt.md` (Generated using ChatGPT)
 
+
+## Changelog
+
+* **v0.1.0**
+  - Base Application, Local Inference via Ollama
+* **v0.2.0**
+  - Added Cloud Inference using Google GenAI and PaddleOCR API
+  - Minor UI Enhancements for Mobile Browsers
+    - Modal Dialog Form for Adding Items
+    - Favicons, Link to GitHub Buttons
+  - Function to Rate Limit API Calls
 
 ### How it Works
 
@@ -46,10 +57,11 @@ Before you begin, ensure you have the following installed and set up:
   - Pull the default model required for parsing:
     ```bash
     ollama pull gemma3n:e4b-it-q4_K_M
+    ollama run gemma3n:e4b-it-q4_K_M
     ```
     *(You can configure a different model in the `.env` file, but the prompt is tuned for this one.)*
 
-## Local Set-Up Guide
+## Local/Cloud Set-Up Guide
 
 ### A. Backend (FastAPI Server)
 
@@ -59,8 +71,14 @@ Before you begin, ensure you have the following installed and set up:
     pip install -r requirements.txt
     ```
 
-2.  **Configure Environment**:
-    Create a `.env` file in the project root by copying the example in the "Environment Configuration" section below. At a minimum, ensure `OLLAMA_BASE_URL` points to your running Ollama instance.
+2.  **Configure Environment**
+   
+    Create a `.env` file in the project root by copying the example file `.env.example`. 
+    At a minimum, ensure `OLLAMA_BASE_URL` points to your running Ollama instance.
+
+    For Cloud Inference, ensure you have a **Gemini API Key** from [Google AI Studio](https://aistudio.google.com/api-keys) and a **PaddleOCR Token & URL**  from [Baidu AI Studio](https://ai.baidu.com/ai-doc/AISTUDIO/7mfz6dgx9). 
+
+    > You can find more environment configuration info in the section below.
 
 3.  **Start the Server**:
     Run the FastAPI server using Uvicorn. It will be available at `http://localhost:8000`. The `--reload` flag automatically restarts the server on code changes.
@@ -72,7 +90,7 @@ Before you begin, ensure you have the following installed and set up:
 ### B. Frontend (React UI)
 
 1.  **Open the File**:
-    Simply run `npx serve .` and open `http://localhost:3000` in your web browser.
+    Simply run `npx serve ./site` and open `http://localhost:3000` in your web browser.
     > No build step or `npm install` is required. It uses React via a CDN and transpiles JSX in the browser.
 
 The application will attempt to connect to the backend at `http://localhost:8000`.
@@ -82,6 +100,21 @@ The application will attempt to connect to the backend at `http://localhost:8000
 Create a file named `.env` in the root of the project to configure the backend. You can leave the defaults for a standard setup.
 
 ```env
+# --- Local / Cloud Deployment --- 
+# "true" for Local Inference, "false" for Cloud Inference.
+LOCAL_HOST_ENABLED="false"
+
+
+# --- Cloud Configuration ---
+# API Configuration for Google GenAI
+GEMINI_API_KEY=<GEMINI_API_KEY>
+CLOUD_MODEL="gemma-3-4b-it"
+
+# API Configuration for Google GenAI
+PP_AI_STUDIO_URL=<PP_AI_STUDIO_URL>
+PP_AI_STUDIO_TOKEN=<PP_AI_STUDIO_TOKEN>
+
+
 # --- Ollama Configuration ---
 # The base URL of your running Ollama instance.
 OLLAMA_BASE_URL="http://localhost:11434"
@@ -114,6 +147,18 @@ PADDLE_REC_MODEL="PP-OCRv5_mobile_rec"
 ```
 
 
-## Current Limitation and Future Improvements
+## Current Limitations & Future Improvements
 
-Some key limitations include language (currently only English is supported) as I filtered out any non-ASCII characters to improve extraction quality. Multi-line detection is poor as receipts with items printed in multiple lines detected incorrectly resulting in poor extraction. Improvements could include changing the detection box threshold or merging multiple lines. 
+Some limitations include language (currently only English characters is parsed) as I filtered out any non-ASCII characters to improve extraction quality. Multi-line detection is poor as receipts with items printed in multiple lines detected incorrectly resulting in poor extraction. Improvements could include fine-tuning PP-OCRv5 model (or adjusting built-in parameters), using PP-StructureV3 to parse a `.md` document instead.
+
+
+## Attribution/Credits
+
+This repository uses the following favicons which was generated using the following graphics from **Twitter Twemoji**:
+
+- Graphics Title: 1f4d1.svg
+- Graphics Author: Copyright 2020 Twitter, Inc and other contributors
+  (https://github.com/twitter/twemoji)
+
+- Graphics Source: https://github.com/twitter/twemoji/blob/master/assets/svg/1f4d1.svg
+- Graphics License: CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/)

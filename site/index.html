@@ -3,291 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Favicons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
     <title>Receipt Splitter</title>
-    <!-- React (no build step) -->
+
+    <!-- React (No Build Step Required) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>
-      :root {
-        font-family: "Inter", system-ui, -apple-system, sans-serif;
-        color: #0f172a;
-        background: #f8fafc;
-      }
-      body {
-        margin: 0;
-      }
-      .page {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 32px 24px 48px;
-      }
-      h1 {
-        font-size: 28px;
-        margin: 0 0 8px;
-      }
-      p.lead {
-        margin: 0 0 20px;
-        color: #475569;
-      }
-      .card {
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 18px 20px;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
-        margin-bottom: 16px;
-      }
-      .upload {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      button {
-        background: #0f766e;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        padding: 10px 14px;
-        cursor: pointer;
-        font-size: 14px;
-      }
-      button:disabled {
-        background: #94a3b8;
-        cursor: not-allowed;
-      }
-      input[type="text"] {
-        padding: 8px 10px;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        font-size: 14px;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 8px;
-      }
-      th,
-      td {
-        border-bottom: 1px solid #e2e8f0;
-        text-align: left;
-        padding: 10px 8px;
-        font-size: 14px;
-      }
-      th {
-        background: #f1f5f9;
-        font-weight: 600;
-      }
-      .people {
-        display: grid;
-        gap: 12px;
-      }
-      .person-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 12px;
-      }
-      .person-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-      }
-      .tags {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-      .tag {
-        background: #e2e8f0;
-        padding: 4px 8px;
-        border-radius: 8px;
-        font-size: 12px;
-      }
-      .summary {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-        gap: 12px;
-        margin-top: 10px;
-      }
-      .summary-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 12px;
-        background: #f8fafc;
-      }
-      .muted {
-        color: #64748b;
-      }
-      .pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: #e0f2f1;
-        color: #0f766e;
-        border-radius: 999px;
-        padding: 6px 10px;
-        font-size: 13px;
-      }
-      .inline-inputs {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
-      .tax-input {
-        width: 120px;
-      }
-      .unassigned {
-        color: #dc2626;
-        font-weight: 600;
-      }
-      .tax-summary {
-        display: flex;
-        justify-content: flex-end;
-        flex: 1;
-      }
-      .item-actions {
-        display: flex;
-        gap: 6px;
-        align-items: center;
-      }
-      .btn-small {
-        padding: 4px 8px;
-        font-size: 12px;
-        background: #64748b;
-      }
-      .btn-small:hover {
-        background: #475569;
-      }
-      .btn-danger {
-        background: #dc2626;
-      }
-      .btn-danger:hover {
-        background: #b91c1c;
-      }
-      .editable-cell {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-      .editable-cell input {
-        flex: 1;
-        min-width: 0;
-        padding: 4px 6px;
-        font-size: 13px;
-      }
-      .editable-cell button {
-        padding: 4px 8px;
-        font-size: 11px;
-      }
-      .edit-mode {
-        display: flex;
-        gap: 4px;
-        align-items: center;
-      }
-      .info-icon {
-        display: inline-block;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: #cbd5e1;
-        color: #475569;
-        text-align: center;
-        line-height: 16px;
-        font-size: 11px;
-        cursor: help;
-        margin-left: 4px;
-      }
-      .tooltip {
-        position: relative;
-        display: inline-block;
-      }
-      .tooltip-content {
-        visibility: hidden;
-        background-color: #1e293b;
-        color: #fff;
-        text-align: left;
-        border-radius: 6px;
-        padding: 8px 12px;
-        position: absolute;
-        z-index: 1000;
-        bottom: 125%;
-        left: 50%;
-        transform: translateX(-50%);
-        white-space: normal;
-        width: 200px;
-        font-size: 12px;
-        opacity: 0;
-        transition: opacity 0.3s;
-      }
-      .tooltip:hover .tooltip-content {
-        visibility: visible;
-        opacity: 1;
-      }
-      .mobile-instructions {
-        display: none;
-      }
-      @media (max-width: 768px) {
-        .page {
-          padding: 16px 12px 24px;
-        }
-        h1 {
-          font-size: 22px;
-        }
-        .card {
-          padding: 12px 14px;
-        }
-        .inline-inputs {
-          flex-direction: column;
-          align-items: stretch;
-        }
-        .tax-summary {
-          justify-content: flex-start;
-          margin-top: 8px;
-        }
-        .pill {
-          flex-wrap: wrap;
-          font-size: 11px;
-          padding: 4px 8px;
-        }
-        table {
-          font-size: 12px;
-          display: block;
-          overflow-x: auto;
-          white-space: nowrap;
-        }
-        th, td {
-          padding: 8px 6px;
-        }
-        .tags {
-          flex-wrap: wrap;
-        }
-        .tag {
-          font-size: 11px;
-          padding: 3px 6px;
-        }
-        .mobile-instructions {
-          display: block;
-          margin-top: 8px;
-          font-size: 12px;
-          color: #64748b;
-        }
-        .desktop-instructions {
-          display: none;
-        }
-        .summary {
-          grid-template-columns: 1fr;
-        }
-        .editable-cell {
-          flex-direction: column;
-          align-items: stretch;
-        }
-        .item-actions {
-          flex-direction: column;
-          gap: 4px;
-        }
-      }
-    </style>
+    
+    <!-- CSS Stylesheet-->
+    <link rel="stylesheet" href="./css/style.css" />
+
+    <!-- GitHub Buttons-->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+
   </head>
   <body>
     <div id="root"></div>
@@ -389,7 +123,7 @@
           }
 
           if (personService > 0) {
-            p.taxes.push({ label: "Service charge", share: personService });
+            p.taxes.push({ label: "Service Charge", share: personService });
           }
 
           p.total = round2(p.subtotal + personSst + personService);
@@ -418,10 +152,18 @@
         const [notes, setNotes] = useState("");
         const [editingItem, setEditingItem] = useState(null);
         const [editForm, setEditForm] = useState({ name: "", price: "", quantity: "" });
+        const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
+        const [newItem, setNewItem] = useState({ name: "New Item", price: 0, quantity: 1 });
 
         const onUpload = async (event) => {
           const file = event.target.files?.[0];
           if (!file) return;
+
+          if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            setMessage("File size exceeds 10MB. Please upload a smaller file.");
+            return;
+          }
+          
           setLoading(true);
           setMessage("Reading receipt...");
           try {
@@ -483,16 +225,8 @@
         };
 
         const addItem = () => {
-          const newItem = {
-            id: crypto.randomUUID(),
-            name: "New Item",
-            price: 0,
-            quantity: 1,
-            assignedPeople: [],
-          };
-          setItems((prev) => [...prev, newItem]);
-          setEditingItem(newItem.id);
-          setEditForm({ name: newItem.name, price: String(newItem.price), quantity: String(newItem.quantity) });
+          setIsAddItemModalOpen(true);
+          setNewItem({ name: "New Item", price: 0, quantity: 1 });
         };
 
         const deleteItem = (itemId) => {
@@ -502,6 +236,40 @@
             setEditForm({ name: "", price: "", quantity: "" });
           }
         };
+
+        const saveNewItem = () => {
+          const name = newItem.name.trim();
+          const price = parseFloat(newItem.price);
+          const quantity = parseInt(newItem.quantity, 10);
+
+          if (!name) {
+            alert("Item name cannot be empty.");
+            return;
+          }
+          if (isNaN(price) || price < 0) {
+            alert("Price must be a valid number >= 0.");
+            return;
+          }
+          if (isNaN(quantity) || quantity < 1 || !Number.isInteger(quantity)) {
+            alert("Quantity must be a valid integer >= 1.");
+            return;
+          }
+
+          const newItemData = {
+            id: crypto.randomUUID(),
+            name,
+            price: round2(price),
+            quantity,
+            assignedPeople: [],
+          };
+          setItems((prev) => [...prev, newItemData]);
+          setIsAddItemModalOpen(false);
+        };
+
+        const cancelAddItem = () => {
+          setIsAddItemModalOpen(false);
+        };
+
 
         const startEditItem = (item) => {
           setEditingItem(item.id);
@@ -554,7 +322,13 @@
 
         return (
           <div className="page">
-            <h1>Receipt Splitter</h1>
+            <div className="header">
+              <h1>Receipt Splitter</h1>
+              <div>
+                <a className="github-button" href="https://github.com/lester-liam" data-color-scheme="no-preference: light; light: light; dark: dark;" data-size="large" aria-label="Follow @lester-liam on GitHub">Follow @lester-liam</a>
+                <a className="github-button" href="https://github.com/lester-liam/receipt-splitter" data-color-scheme="no-preference: light; light: light; dark: dark;" data-icon="octicon-star" data-size="large" aria-label="Star lester-liam/receipt-splitter on GitHub">Star</a>
+              </div>
+            </div>
             <p className="lead">
               Upload a receipt, auto-extract items, assign them to people, and view a clear split.
             </p>
@@ -578,30 +352,34 @@
 
             <div className="card">
               <div className="inline-inputs">
-                <div>
-                  <div className="muted">SST (%)</div>
-                  <input
-                    className="tax-input"
-                    type="number"
-                    step="1"
-                    value={sst}
-                    onChange={(e) => setSst(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <div className="muted">Service charge (%)</div>
-                  <input
-                    className="tax-input"
-                    type="number"
-                    step="1"
-                    value={serviceCharge}
-                    onChange={(e) => setServiceCharge(e.target.value)}
-                  />
+                <div className="tax-inputs">
+                  <div>
+                    <div className="muted">SST (%)</div>
+                    <input
+                      className="tax-input"
+                      type="number"
+                      step="1"
+                      value={sst}
+                      onChange={(e) => setSst(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <div className="muted">Service Charge (%)</div>
+                    <input
+                      className="tax-input"
+                      type="number"
+                      step="1"
+                      value={serviceCharge}
+                      onChange={(e) => setServiceCharge(e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="tax-summary">
                   <div className="pill">
-                    Items: {currency(itemsTotal || 0)} · Service: {currency(serviceChargeAmount || 0)} · SST: {currency(sstAmount || 0)} ·
-                    Total: {currency(grandTotal || 0)}
+                    <div>Items: {currency(itemsTotal || 0)}</div>
+                    <div>Service: {currency(serviceChargeAmount || 0)}</div>
+                    <div>SST: {currency(sstAmount || 0)}</div>
+                    <div>Total: {currency(grandTotal || 0)}</div>
                   </div>
                 </div>
               </div>
@@ -612,13 +390,13 @@
                 <h3 style={{ margin: 0 }}>Items</h3>
                 <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
                   <div className="muted desktop-instructions">
-                    Assign items to people. Items can be shared by selecting multiple names.
+                    Add items and assign them by checking boxes.
                   </div>
                   <button onClick={addItem}>+ Add Item</button>
                 </div>
               </div>
               <div className="mobile-instructions">
-                Tap items to edit. Assign items to people by checking boxes.
+                Tap items to edit. Assign items by checking boxes.
               </div>
               {items.length === 0 ? (
                 <p className="muted">No items yet. Upload a receipt or add items manually.</p>
@@ -724,7 +502,7 @@
             </div>
 
             <div className="card">
-              <div className="person-header">
+              <div className="person-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "right", flexWrap: "wrap", gap: "8px" }}>
                 <h3 style={{ margin: 0 }}>People</h3>
                 <div>
                   <input
@@ -791,7 +569,7 @@
                         <div>
                           {record.items.map(({ item, share }) => (
                             <div key={item.id}>
-                              {item.name} — {currency(share)}{" "}
+                              {item.name}  {currency(share)}{" "}
                               <span className="muted">
                                 {item.assignedPeople?.length > 1 ? "(shared)" : ""}
                               </span>
@@ -812,6 +590,52 @@
                   })}
                 </div>
               )}
+            </div>
+
+            {isAddItemModalOpen && (
+              <div className="modal-backdrop">
+                <div className="modal">
+                  <h3>Add New Item</h3>
+                  <div className="modal-body">
+                    <div className="form-group">
+                      <label>Name</label>
+                      <input
+                        type="text"
+                        value={newItem.name}
+                        onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={newItem.price}
+                        onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Quantity</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="1"
+                        value={newItem.quantity}
+                        onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button onClick={cancelAddItem}>Cancel</button>
+                    <button onClick={saveNewItem} style={{ marginLeft: 8 }}>Save</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div>
+              <hr />
+              <p className="lead">This site uses Favicon generated by <a href="https://favicon.io">favicon.io</a> which uses the following graphics from Twitter Twemoji: <a href="/favicon_credits.html">Credits</a></p>
             </div>
           </div>
         );

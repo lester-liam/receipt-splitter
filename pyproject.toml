@@ -1,0 +1,18 @@
+[project]
+name = "receipt-splitter"
+version = "0.2.0"
+description = "Website to upload, detect extract items in a receipt using a PaddleOCRv5+Gemma3n Model, great for splitting bills"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi==0.115.6",
+    "fastapi-throttle==0.1.8",
+    "google-genai==1.60.0",
+    "httpx==0.28.1",
+    "paddleocr==3.3.0",
+    "paddlepaddle==3.2.0",
+    "pydantic==2.10.3",
+    "python-multipart==0.0.21",
+    "requests==2.32.5",
+    "uvicorn[standard]==0.30.6",
+]

@@ -1,5 +1,5 @@
 title: receipt-splitter
-description: A local website to recognize and extract items in a receipt using a local OCR+LLM Model, to calculate cost breakdowns per pax with taxes.
+description: Website to upload, detect extract items in a receipt using PaddleOCRv5+Gemma3n Model, great for splitting bills
 remote_theme: pages-themes/modernist@v0.2.0
 plugins:
 - jekyll-remote-theme
